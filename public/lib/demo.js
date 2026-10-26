@@ -1,6 +1,6 @@
 // Sample offers from fictional stores, used when no live price source is set up.
 // The same query always produces the same offers.
-import { COUNTRIES } from './money.js';
+import { COUNTRIES, DEFAULT_COUNTRY } from './places.js';
 import { rankOffers } from './deals.js';
 
 const STORES = [
@@ -31,6 +31,10 @@ const PRICE_HINTS = [
   [/book|novel/, 19],
 ];
 
+// Sample prices are in US dollars; this converts them to roughly local amounts.
+// The Saudi riyal is pegged at 3.75 to the dollar.
+const PRICE_SCALE = { SA: 3.75 };
+
 const DELIVERY = ['Arrives in 2–4 days', 'Arrives in 3–5 days', 'Arrives in 4–7 days', 'Ships next business day'];
 const SUFFIXES = ['', ' – Latest Model', ' – Retail Box', ' with 2-Year Warranty', ' – Bundle Edition', ' (Sealed)'];
 
@@ -59,13 +63,13 @@ function titleCase(text) {
   return text.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
 
-export function demoOffers(query, country = 'US') {
+export function demoOffers(query, country = DEFAULT_COUNTRY) {
   const q = query.trim().replace(/\s+/g, ' ');
   const lower = q.toLowerCase();
   const rand = seededRandom(hash(`${lower}|${country}`));
   const between = (lo, hi) => lo + rand() * (hi - lo);
   const pick = (list) => list[Math.floor(rand() * list.length)];
-  const base = PRICE_HINTS.find(([pattern]) => pattern.test(lower))?.[1] ?? 45;
+  const base = (PRICE_HINTS.find(([pattern]) => pattern.test(lower))?.[1] ?? 45) * (PRICE_SCALE[country] ?? 1);
   const fee = (share) => charm(between(3, 6) + base * share);
   const name = titleCase(q);
   const currency = COUNTRIES[country]?.currency ?? 'USD';
@@ -128,11 +132,12 @@ export function demoOffers(query, country = 'US') {
 }
 
 /** A complete search response built from sample data, in the same shape the server returns. */
-export function demoResult(query, country = 'US', zip = '') {
+export function demoResult(query, country = DEFAULT_COUNTRY, zip = '', city = '') {
   const offers = rankOffers(demoOffers(query, country));
   return {
     query,
     zip,
+    city,
     country,
     currency: COUNTRIES[country]?.currency ?? 'USD',
     demo: true,

@@ -70,6 +70,15 @@ test('the smart filter hides accessories, parts and outliers but keeps real matc
   ]);
   const kept = filterOffers(offers, {}, 'sony wh-1000xm5').map((o) => o.id).sort();
   assert.deepEqual(kept, ['a', 'b', 'c']);
+  // Arabic accessory words count too.
+  const arabic = rankOffers([
+    ...offers.filter((o) => ['a', 'b', 'c'].includes(o.id)),
+    offer({ id: 'cover', title: 'كفر ايفون 15 برو', price: 120, shipping: 0 }),
+    offer({ id: 'phone', title: 'ايفون 15 برو مستعمل', price: 120, shipping: 0 }),
+  ]);
+  const arabicIds = filterOffers(arabic, {}, 'ايفون 15 برو').map((o) => o.id);
+  assert.ok(!arabicIds.includes('cover'));
+  assert.ok(arabicIds.includes('phone'));
   // When the query asks for the accessory, it isn't hidden.
   const caseSearch = filterOffers(offers, {}, 'sony wh-1000xm5 case').map((o) => o.id);
   assert.ok(caseSearch.includes('d'));

@@ -1,17 +1,6 @@
 // Money helpers shared by the server and the browser.
 
-export const COUNTRIES = {
-  US: { name: 'United States', currency: 'USD', locale: 'en-US', postal: 'ZIP code' },
-  CA: { name: 'Canada', currency: 'CAD', locale: 'en-CA', postal: 'Postal code' },
-  GB: { name: 'United Kingdom', currency: 'GBP', locale: 'en-GB', postal: 'Postcode' },
-  AU: { name: 'Australia', currency: 'AUD', locale: 'en-AU', postal: 'Postcode' },
-  DE: { name: 'Germany', currency: 'EUR', locale: 'de-DE', postal: 'Postleitzahl' },
-  FR: { name: 'France', currency: 'EUR', locale: 'fr-FR', postal: 'Code postal' },
-  IT: { name: 'Italy', currency: 'EUR', locale: 'it-IT', postal: 'CAP' },
-  ES: { name: 'Spain', currency: 'EUR', locale: 'es-ES', postal: 'Código postal' },
-};
-
-const CURRENCY_MARK = '(?:US\\$|CA\\$|C\\$|AU\\$|A\\$|\\$|£|€|USD|CAD|AUD|GBP|EUR)';
+const CURRENCY_MARK = '(?:US\\$|CA\\$|C\\$|AU\\$|A\\$|\\$|£|€|﷼|ر\\.?\\s?س|USD|CAD|AUD|GBP|EUR|SAR)';
 const AMOUNT = '(\\d[\\d.,]*\\d|\\d)';
 const MARKED_AMOUNT = new RegExp(`${CURRENCY_MARK}\\s?${AMOUNT}|${AMOUNT}\\s?${CURRENCY_MARK}`, 'i');
 const FREE = /\bfree\b|kostenlos|gratuit|gratis/;

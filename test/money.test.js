@@ -17,6 +17,8 @@ test('parseMoney reads prices from text and numbers', () => {
   assert.equal(parseMoney('4,99 €'), 4.99);
   assert.equal(parseMoney('£12'), 12);
   assert.equal(parseMoney('US$ 19.50'), 19.5);
+  assert.equal(parseMoney('SAR 3,199.00'), 3199);
+  assert.equal(parseMoney('1,700 ر.س'), 1700);
   assert.equal(parseMoney(42), 42);
   assert.equal(parseMoney('no price'), null);
   assert.equal(parseMoney(undefined), null);
@@ -33,6 +35,7 @@ test('parseShipping reads a shipping fee', () => {
   assert.equal(parseShipping('$5.99 delivery'), 5.99);
   assert.equal(parseShipping('+$12.50 shipping'), 12.5);
   assert.equal(parseShipping('Delivery: 4,99 €'), 4.99);
+  assert.equal(parseShipping('SAR 15.00 delivery'), 15);
   assert.equal(parseShipping(7.25), 7.25);
 });
 

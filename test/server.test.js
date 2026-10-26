@@ -5,7 +5,7 @@ import { createApp } from '../src/app.js';
 import { createSearcher } from '../src/search.js';
 
 async function withServer(fn) {
-  const server = createApp({ searcher: createSearcher({ env: {} }) });
+  const server = createApp({ searcher: createSearcher({ env: {}, providers: [] }) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   try {
@@ -53,7 +53,7 @@ test('search API returns ranked offers', async () => {
 
 test('search API rejects bad input', async () => {
   await withServer(async (base) => {
-    for (const query of ['', 'q=', 'q=tv&country=XX', 'q=tv&zip=<script>', `q=${'a'.repeat(201)}`]) {
+    for (const query of ['', 'q=', 'q=tv&country=XX', 'q=tv&country=US&zip=<script>', `q=${'a'.repeat(201)}`]) {
       const res = await fetch(`${base}/api/search?${query}`);
       assert.equal(res.status, 400, query);
       assert.ok((await res.json()).error);
@@ -63,12 +63,27 @@ test('search API rejects bad input', async () => {
   });
 });
 
-test('status API reports demo mode', async () => {
+test('search API defaults to Saudi Arabia and accepts a city', async () => {
   await withServer(async (base) => {
-    const body = await (await fetch(`${base}/api/status`)).json();
-    assert.equal(body.demo, true);
-    assert.deepEqual(body.sources.map((s) => s.id), ['ebay', 'google']);
+    const body = await (await fetch(`${base}/api/search?q=airpods&city=jeddah`)).json();
+    assert.equal(body.country, 'SA');
+    assert.equal(body.currency, 'SAR');
+    assert.equal(body.city, 'jeddah');
+    const bad = await fetch(`${base}/api/search?q=airpods&country=SA&city=atlantis`);
+    assert.equal(bad.status, 400);
   });
+});
+
+test('status API lists the sources', async () => {
+  const server = createApp({ searcher: createSearcher({ env: {} }) });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const body = await (await fetch(`http://127.0.0.1:${server.address().port}/api/status`)).json();
+    assert.deepEqual(body.sources.map((s) => [s.id, s.configured]), [['noon', true], ['haraj', true], ['ebay', false], ['google', false]]);
+    assert.deepEqual(body.sources.find((s) => s.id === 'haraj').countries, ['SA']);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('static files cannot escape the public folder', async () => {

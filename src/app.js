@@ -3,7 +3,7 @@ import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COUNTRIES } from '../public/lib/money.js';
+import { CITIES, COUNTRIES, DEFAULT_COUNTRY, findCity } from '../public/lib/places.js';
 import { createSearcher } from './search.js';
 
 const PUBLIC_DIR = path.resolve(fileURLToPath(new URL('../public', import.meta.url)));
@@ -38,13 +38,18 @@ export function parseSearchParams(params) {
   const q = (params.get('q') ?? '').trim().replace(/\s+/g, ' ');
   if (!q) return { error: 'Enter a product to search for.' };
   if (q.length > 200) return { error: 'Search text is too long (200 characters max).' };
-  const country = (params.get('country') || 'US').toUpperCase();
+  const country = (params.get('country') || DEFAULT_COUNTRY).toUpperCase();
   if (!Object.hasOwn(COUNTRIES, country)) return { error: 'That country isn’t supported yet.' };
+  if (CITIES[country]) {
+    const city = params.get('city') ?? '';
+    if (city && !findCity(country, city)) return { error: 'Pick a city from the list.' };
+    return { q, zip: '', city, country };
+  }
   const zip = (params.get('zip') ?? '').trim();
   if (!/^[A-Za-z0-9 -]{0,10}$/.test(zip)) {
     return { error: 'Postal codes can only contain letters, numbers, spaces and dashes.' };
   }
-  return { q, zip, country };
+  return { q, zip, city: '', country };
 }
 
 function sendJson(res, status, body) {

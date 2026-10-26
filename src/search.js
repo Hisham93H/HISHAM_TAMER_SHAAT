@@ -1,10 +1,12 @@
-// Runs a search across every configured price source and merges the offers
-// into one list ranked by total price (item + shipping).
-import { COUNTRIES } from '../public/lib/money.js';
+// Runs a search across every price source that covers the buyer's country and merges
+// the offers into one list ranked by total price (item + shipping).
+import { COUNTRIES } from '../public/lib/places.js';
 import { rankOffers } from '../public/lib/deals.js';
 import { demoResult } from '../public/lib/demo.js';
 import { createEbayProvider } from './providers/ebay.js';
 import { createGoogleShoppingProvider } from './providers/google-shopping.js';
+import { createHarajProvider } from './providers/haraj.js';
+import { createNoonProvider } from './providers/noon.js';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_LIMIT = 200;
@@ -22,29 +24,30 @@ function dedupeByUrl(offers) {
 export function createSearcher({
   env = process.env,
   fetch = globalThis.fetch,
-  providers = [createEbayProvider(), createGoogleShoppingProvider()],
+  providers = [createNoonProvider(), createHarajProvider(), createEbayProvider(), createGoogleShoppingProvider()],
   now = Date.now,
 } = {}) {
   const cache = new Map();
-  const configured = () => providers.filter((p) => p.isConfigured(env));
+  // DISABLE_SOURCES=noon,haraj turns sources off without removing them from the code.
+  const disabled = () => new Set((env.DISABLE_SOURCES ?? '').toLowerCase().split(',').map((id) => id.trim()));
+  const isEnabled = (p) => p.isConfigured(env) && !disabled().has(p.id);
 
   function status() {
     return {
-      demo: configured().length === 0,
-      sources: providers.map((p) => ({ id: p.id, name: p.name, configured: p.isConfigured(env) })),
+      sources: providers.map((p) => ({ id: p.id, name: p.name, configured: isEnabled(p), countries: p.countries })),
     };
   }
 
-  async function search({ q, zip = '', country = 'US' }) {
-    const live = configured();
-    if (!live.length) return demoResult(q, country, zip);
+  async function search({ q, zip = '', city = '', country }) {
+    const live = providers.filter((p) => isEnabled(p) && p.countries.includes(country));
+    if (!live.length) return demoResult(q, country, zip, city);
 
-    const key = JSON.stringify([q.toLowerCase(), zip.toUpperCase(), country]);
+    const key = JSON.stringify([q.toLowerCase(), zip.toUpperCase(), city, country]);
     const cached = cache.get(key);
     if (cached && cached.expiresAt > now()) return cached.value;
 
     const { currency } = COUNTRIES[country];
-    const settled = await Promise.allSettled(live.map((p) => p.search({ q, zip, country }, { env, fetch })));
+    const settled = await Promise.allSettled(live.map((p) => p.search({ q, zip, city, country }, { env, fetch })));
     // Offers in another currency can't be compared fairly, so they are left out.
     const offers = dedupeByUrl(rankOffers(settled.flatMap((r) =>
       r.status === 'fulfilled' ? r.value.filter((o) => o.currency === currency) : [])));
@@ -55,7 +58,7 @@ export function createSearcher({
       count: offers.filter((o) => o.source === live[i].id).length,
       ...(r.status === 'rejected' && { error: r.reason?.message ?? 'Unknown error' }),
     }));
-    const value = { query: q, zip, country, currency, demo: false, sources, offers, fetchedAt: new Date(now()).toISOString() };
+    const value = { query: q, zip, city, country, currency, demo: false, sources, offers, fetchedAt: new Date(now()).toISOString() };
 
     if (sources.some((s) => s.ok)) {
       if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);

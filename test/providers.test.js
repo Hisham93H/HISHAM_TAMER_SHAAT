@@ -110,7 +110,8 @@ test('searcher returns demo data when no source is configured', async () => {
   const result = await searcher.search({ q: 'air fryer', zip: '', country: 'US' });
   assert.equal(result.demo, true);
   assert.ok(result.offers.length > 5);
-  assert.equal(searcher.status().demo, true);
+  const configured = searcher.status().sources.filter((s) => s.configured).map((s) => s.id);
+  assert.deepEqual(configured, ['noon', 'haraj']);
 });
 
 test('searcher merges sources, keeps going when one fails, and caches results', async () => {
@@ -118,6 +119,7 @@ test('searcher merges sources, keeps going when one fails, and caches results', 
   const good = {
     id: 'good',
     name: 'Good Source',
+    countries: ['US'],
     isConfigured: () => true,
     async search() {
       calls += 1;
@@ -132,6 +134,7 @@ test('searcher merges sources, keeps going when one fails, and caches results', 
   const broken = {
     id: 'broken',
     name: 'Broken Source',
+    countries: ['US'],
     isConfigured: () => true,
     async search() { throw new Error('Service unavailable'); },
   };

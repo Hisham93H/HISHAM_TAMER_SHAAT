@@ -1,7 +1,7 @@
 // eBay Browse API. eBay returns the real shipping cost to the buyer's postal code,
 // so totals from this source are exact at search time.
 // Docs: https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search
-import { COUNTRIES } from '../../public/lib/money.js';
+import { COUNTRIES } from '../../public/lib/places.js';
 
 const HOSTS = {
   production: 'https://api.ebay.com',
@@ -95,6 +95,8 @@ export function createEbayProvider() {
   return {
     id: 'ebay',
     name: 'eBay',
+    // Countries with their own eBay marketplace (eBay has none in Saudi Arabia).
+    countries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES'],
     isConfigured: (env) => Boolean(env.EBAY_CLIENT_ID && env.EBAY_CLIENT_SECRET),
 
     async search({ q, zip, country }, { env, fetch }) {

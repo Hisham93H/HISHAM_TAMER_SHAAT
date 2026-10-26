@@ -176,7 +176,7 @@ h1, h2, h3 { text-wrap: balance; }
 
 .search {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px 190px auto;
+  grid-template-columns: minmax(0, 1fr) 210px 180px auto;
   align-items: end;
   gap: 10px;
   padding-block: 16px 28px;
@@ -412,7 +412,9 @@ h1, h2, h3 { text-wrap: balance; }
   font: 800 2rem/1 var(--font-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  text-align: right;
 }
+.receipt .is-total small { color: var(--muted); font: 500 0.85rem var(--font-mono); letter-spacing: 0; }
 .best-delivery { margin: 0; color: var(--muted); font-size: 0.88rem; }
 
 .btn-deal {

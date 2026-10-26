@@ -29,11 +29,15 @@
   <form id="search" class="wrap search" role="search" novalidate>
     <div class="field field-q">
       <label for="q">Product</label>
-      <input id="q" name="q" type="search" placeholder="Try “nintendo switch oled”" maxlength="200" autocomplete="off" enterkeyhint="search">
+      <input id="q" name="q" type="search" placeholder="Try “iphone 15 pro” or “ايفون 15”" maxlength="200" autocomplete="off" enterkeyhint="search">
     </div>
-    <div class="field field-zip">
+    <div class="field field-zip" id="zip-field">
       <label for="zip">Ship to</label>
       <input id="zip" name="zip" type="text" placeholder="ZIP code" maxlength="10" autocomplete="postal-code">
+    </div>
+    <div class="field field-city" id="city-field" hidden>
+      <label for="city">Your city</label>
+      <select id="city" name="city"></select>
     </div>
     <div class="field field-country">
       <label for="country">Country</label>
@@ -74,7 +78,7 @@
 
         <fieldset class="filter-group">
           <legend class="filter-label">Shipping</legend>
-          <label class="check"><input type="checkbox" id="free-only"> Free shipping only</label>
+          <label class="check"><input type="checkbox" id="free-only"> Free shipping or local pickup only</label>
           <label class="check"><input type="checkbox" id="include-unknown" checked> Include offers with unknown shipping</label>
         </fieldset>
 
@@ -108,7 +112,7 @@
 </main>
 
 <footer class="wrap footer">
-  <p><strong>How ranking works.</strong> Every offer is ranked by item price plus shipping to your postal code. Offers that don’t list a shipping price are shown after the priced ones, because their real total isn’t known until checkout.</p>
+  <p><strong>How ranking works.</strong> Every offer is ranked by item price plus shipping to your postal code or city. Haraj listings in your own city count as free local pickup. Offers that don’t list a shipping price are shown after the priced ones, because their real total isn’t known until checkout.</p>
   <p>Prices come from each source at search time and can change. Sales tax and import duties are not included.</p>
 </footer>
 </body>

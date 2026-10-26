@@ -6,7 +6,10 @@ const ACCESSORY_TERMS = [
   'case', 'cover', 'skin', 'sticker', 'decal', 'protector', 'tempered glass', 'charger',
   'cable', 'adapter', 'replacement', 'strap', 'band', 'sleeve', 'pouch', 'mount', 'holder',
   'stand', 'dock', 'tips', 'manual', 'box only', 'empty box', 'compatible', 'refill', 'bag',
-].map((term) => new RegExp(`\\b${term}s?\\b`, 'i'));
+].map((term) => new RegExp(`\\b${term}s?\\b`, 'i')).concat(
+  // Arabic: cover, case, charger, cable, wire, screen protector, stand, box only.
+  ['كفر', 'جراب', 'غطاء', 'شاحن', 'كيبل', 'سلك', 'حماية شاشة', 'استاند', 'كرتون فقط'].map((term) => new RegExp(term)),
+);
 
 export function isValidOffer(offer) {
   return typeof offer?.title === 'string' && offer.title.trim() !== ''

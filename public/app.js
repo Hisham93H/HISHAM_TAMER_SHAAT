@@ -1,4 +1,4 @@
-import { COUNTRIES } from './lib/money.js';
+import { CITIES, COUNTRIES, DEFAULT_COUNTRY, describeLocation, findCity } from './lib/places.js';
 import { filterOffers, sortOffers, summarize } from './lib/deals.js';
 import { demoResult } from './lib/demo.js';
 
@@ -18,6 +18,9 @@ const els = {
   form: $('#search'),
   q: $('#q'),
   zip: $('#zip'),
+  zipField: $('#zip-field'),
+  city: $('#city'),
+  cityField: $('#city-field'),
   country: $('#country'),
   mode: $('#mode'),
   notices: $('#notices'),
@@ -119,18 +122,33 @@ const backendReady = detectBackend().then((backend) => {
   renderMode();
 });
 
+// Where to ship to: a city where the country has a city list, otherwise a postal code.
+function shipTo() {
+  const country = els.country.value;
+  return CITIES[country]
+    ? { country, zip: '', city: els.city.value }
+    : { country, zip: els.zip.value.trim(), city: '' };
+}
+
+function liveSourceNames(country) {
+  return state.backend
+    ? state.backend.sources.filter((s) => s.configured && s.countries.includes(country)).map((s) => s.name)
+    : [];
+}
+
 async function search() {
   const q = els.q.value.trim().replace(/\s+/g, ' ');
   if (!q) {
     els.q.focus();
     return;
   }
-  const country = els.country.value;
-  const zip = els.zip.value.trim();
+  const { country, zip, city } = shipTo();
   storage.set('country', country);
-  storage.set('zip', zip);
+  if (CITIES[country]) storage.set('city', city);
+  else storage.set('zip', zip);
+  const params = CITIES[country] ? { q, city, country } : { q, zip, country };
   try {
-    history.replaceState(null, '', `?${new URLSearchParams({ q, zip, country })}`);
+    history.replaceState(null, '', `?${new URLSearchParams(params)}`);
   } catch { /* the address can't change here */ }
 
   const id = ++state.requestId;
@@ -138,7 +156,7 @@ async function search() {
   render();
   try {
     await backendReady;
-    const result = state.backend ? await fetchResult({ q, zip, country }) : demoResult(q, country, zip);
+    const result = state.backend ? await fetchResult(params) : demoResult(q, country, zip, city);
     if (id !== state.requestId) return;
     state.result = result;
     state.hiddenSources.clear();
@@ -151,16 +169,16 @@ async function search() {
 }
 
 function showExample() {
+  const { country, zip, city } = shipTo();
   state.example = true;
-  state.result = demoResult(EXAMPLE_QUERY, els.country.value, els.zip.value.trim());
+  state.result = demoResult(EXAMPLE_QUERY, country, zip, city);
   render();
 }
 
 // Rendering
 
 function renderMode() {
-  const backend = state.backend;
-  const live = backend ? backend.sources.filter((s) => s.configured).map((s) => s.name) : [];
+  const live = liveSourceNames(els.country.value);
   els.mode.textContent = live.length ? `Live · ${live.join(' + ')}` : 'Demo data';
   els.mode.classList.toggle('is-live', live.length > 0);
   render();
@@ -177,8 +195,8 @@ function renderNotices() {
     notes.push(h('p', { class: 'notice is-warning' },
       h('strong', null, 'Demo mode. '),
       state.backend
-        ? 'No price sources are set up on the server yet, so these offers come from fictional stores. Add eBay or SerpAPI keys to the .env file to compare live prices.'
-        : 'These offers come from fictional stores so you can try the tool. Run the Hisham’s Tool server with eBay or SerpAPI keys to compare live prices.'));
+        ? `No live price source covers ${COUNTRIES[result.country]?.name ?? result.country} on this server yet, so these offers come from fictional stores. Add eBay or SerpAPI keys to the .env file to compare live prices.`
+        : 'These offers come from fictional stores so you can try the tool. Run the Hisham’s Tool server to compare live prices from noon, Haraj and other stores.'));
   }
   if (!state.loading && !state.example) {
     for (const source of result?.sources ?? []) {
@@ -221,9 +239,10 @@ function thumb(offer) {
 
 function titleNode(offer, className) {
   const url = safeUrl(offer.url);
+  // dir="auto" lets Arabic titles from noon and Haraj read right to left.
   return url
-    ? h('a', { class: className, href: url, target: '_blank', rel: 'noopener noreferrer' }, offer.title)
-    : h('span', { class: className }, offer.title);
+    ? h('a', { class: className, href: url, target: '_blank', rel: 'noopener noreferrer', dir: 'auto' }, offer.title)
+    : h('span', { class: className, dir: 'auto' }, offer.title);
 }
 
 function dealLink(offer, className, label) {
@@ -240,7 +259,8 @@ function dealLink(offer, className, label) {
 
 function shippingText(offer) {
   if (offer.shipping == null) return 'Unknown';
-  return offer.shipping === 0 ? 'Free' : `+${money(offer.shipping, offer.currency)}`;
+  if (offer.shipping === 0) return offer.pickup ? 'Pickup' : 'Free';
+  return `+${money(offer.shipping, offer.currency)}`;
 }
 
 function meta(offer) {
@@ -248,27 +268,31 @@ function meta(offer) {
     ? `★ ${offer.rating}${offer.reviews ? ` (${offer.reviews.toLocaleString()})` : ''}`
     : offer.sellerFeedback;
   return h('div', { class: 'meta' },
-    h('span', { class: 'seller' }, offer.seller),
+    h('span', { class: 'seller', dir: 'auto' }, offer.seller),
     offer.source !== 'demo' && h('span', null, offer.sourceName),
     CONDITION_LABELS[offer.condition] && h('span', { class: 'chip' }, CONDITION_LABELS[offer.condition]),
-    offer.shipping === 0 && h('span', { class: 'chip is-free' }, 'Free shipping'),
+    offer.shipping === 0 && h('span', { class: 'chip is-free' }, offer.pickup ? 'Local pickup' : 'Free shipping'),
     offer.shipping == null && h('span', { class: 'chip is-unknown' }, 'Shipping unknown'),
     rating && h('span', null, rating),
     offer.delivery && h('span', null, offer.delivery));
 }
 
 function renderBest(summary) {
-  const best = summary?.best;
+  // With no known delivered price (e.g. only noon and out-of-town Haraj offers), show
+  // the lowest price instead and say that shipping still has to be added.
+  const best = summary?.best ?? summary?.lowestSticker;
   els.best.hidden = !best;
   if (!best) return els.best.replaceChildren();
-  const savings = summary.savingsVsTypical > 0
+  const known = best.total != null;
+  const savings = known && summary.savingsVsTypical > 0
     ? h('p', { class: 'best-savings' },
       h('strong', null, `${money(summary.savingsVsTypical)} less`),
       ` than the typical delivered price of ${money(summary.typicalTotal)} across ${count(summary.count, 'offer')}.`)
     : null;
-  els.best.replaceChildren(h('article', { class: 'best', 'aria-label': 'Cheapest delivered offer' },
+  const heading = known ? 'Cheapest delivered' : 'Lowest price · shipping not listed';
+  els.best.replaceChildren(h('article', { class: 'best', 'aria-label': heading },
     h('div', { class: 'best-main' },
-      h('div', { class: 'eyebrow' }, 'Cheapest delivered'),
+      h('div', { class: 'eyebrow' }, heading),
       h('div', { class: 'best-product' },
         thumb(best),
         h('div', null,
@@ -280,7 +304,11 @@ function renderBest(summary) {
         h('div', null, h('dt', null, 'Item price'), h('dd', null, money(best.price, best.currency))),
         h('div', null, h('dt', null, 'Shipping'),
           h('dd', { class: best.shipping === 0 ? 'is-free' : null }, shippingText(best))),
-        h('div', { class: 'is-total' }, h('dt', null, 'You pay'), h('dd', null, money(best.total, best.currency)))),
+        known
+          ? h('div', { class: 'is-total' }, h('dt', null, 'You pay'), h('dd', null, money(best.total, best.currency)))
+          : h('div', { class: 'is-total' }, h('dt', null, 'You pay'),
+            h('dd', null, money(best.price, best.currency), h('small', null, ' + shipping')))),
+      !known && best.delivery && h('p', { class: 'best-delivery' }, best.delivery),
       dealLink(best, 'btn-deal', 'Go to deal'))));
 }
 
@@ -343,7 +371,7 @@ function renderHiddenNote(hidden) {
 }
 
 function renderLoading() {
-  const names = state.backend ? state.backend.sources.filter((s) => s.configured).map((s) => s.name) : [];
+  const names = liveSourceNames(els.country.value);
   els.status.textContent = names.length ? `Searching ${names.join(' and ')}…` : 'Searching…';
   els.best.hidden = true;
   els.insight.hidden = true;
@@ -370,10 +398,9 @@ function render() {
     : null;
   const visible = sortOffers(filterOffers(result.offers, { ...state.filters, sources }, result.query), state.filters.sort);
   const summary = summarize(visible);
-  const country = COUNTRIES[result.country]?.name ?? result.country;
   els.status.replaceChildren(
     h('strong', null, count(visible.length, 'offer')),
-    ` for “${result.query}”, shipping to ${result.zip ? `${result.zip}, ${country}` : country}.`);
+    ` for “${result.query}”, shipping to ${describeLocation(result)}.`);
   renderBest(summary);
   renderInsight(summary);
   renderOffers(visible, summary ?? {});
@@ -406,8 +433,19 @@ function resetFilters() {
   readFilters();
 }
 
-function updatePostalPlaceholder() {
-  els.zip.placeholder = COUNTRIES[els.country.value]?.postal ?? 'Postal code';
+// Shows a city list for countries that have one, and a postal code box elsewhere.
+function updateLocationField(preferredCity = els.city.value) {
+  const country = els.country.value;
+  const cities = CITIES[country];
+  els.cityField.hidden = !cities;
+  els.zipField.hidden = Boolean(cities);
+  els.zip.placeholder = COUNTRIES[country]?.postal ?? 'Postal code';
+  if (cities) {
+    els.city.replaceChildren(
+      h('option', { value: '' }, 'Any city'),
+      ...cities.map((city) => h('option', { value: city.id }, city.name)));
+    els.city.value = findCity(country, preferredCity) ? preferredCity : '';
+  }
 }
 
 function init() {
@@ -418,16 +456,19 @@ function init() {
   const country = [params.get('country'), storage.get('country')]
     .map((c) => c?.toUpperCase())
     .find((c) => c && Object.hasOwn(COUNTRIES, c));
-  els.country.value = country ?? 'US';
+  els.country.value = country ?? DEFAULT_COUNTRY;
   els.zip.value = params.get('zip') ?? storage.get('zip') ?? '';
-  updatePostalPlaceholder();
+  updateLocationField(params.get('city') ?? storage.get('city') ?? '');
   if (matchMedia('(max-width: 900px)').matches) els.filtersPanel.open = false;
 
   els.form.addEventListener('submit', (event) => {
     event.preventDefault();
     search();
   });
-  els.country.addEventListener('change', updatePostalPlaceholder);
+  els.country.addEventListener('change', () => {
+    updateLocationField();
+    renderMode();
+  });
   els.filtersPanel.addEventListener('change', (event) => {
     if (!event.target.id.startsWith('source-')) readFilters();
   });

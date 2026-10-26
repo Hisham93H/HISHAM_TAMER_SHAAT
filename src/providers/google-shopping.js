@@ -1,8 +1,10 @@
 // Google Shopping results through SerpAPI. Google lists offers from many stores
-// (Amazon, Walmart, Best Buy, Target and smaller shops). Shipping comes from the
-// listing's delivery text, e.g. "Free delivery" or "$5.99 delivery".
+// (Amazon, Walmart, Best Buy and smaller shops; in Saudi Arabia, whichever local
+// stores list there). Shipping comes from the listing's delivery text, e.g.
+// "Free delivery" or "$5.99 delivery".
 // Docs: https://serpapi.com/google-shopping-api
-import { COUNTRIES, parseMoney, parseShipping } from '../../public/lib/money.js';
+import { parseMoney, parseShipping } from '../../public/lib/money.js';
+import { COUNTRIES } from '../../public/lib/places.js';
 
 const TIMEOUT_MS = 15_000;
 
@@ -39,6 +41,7 @@ export function createGoogleShoppingProvider() {
   return {
     id: 'google',
     name: 'Google Shopping',
+    countries: Object.keys(COUNTRIES),
     isConfigured: (env) => Boolean(env.SERPAPI_KEY),
 
     async search({ q, country }, { env, fetch }) {
