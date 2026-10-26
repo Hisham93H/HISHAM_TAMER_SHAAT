@@ -42,7 +42,8 @@ export function createNoonProvider() {
     id: 'noon',
     name: 'noon',
     countries: ['SA'],
-    isConfigured: () => true,
+    // Off on Vercel, whose servers noon always blocks.
+    isConfigured: (env) => !env.VERCEL,
 
     async search({ q }, { fetch }) {
       let res;

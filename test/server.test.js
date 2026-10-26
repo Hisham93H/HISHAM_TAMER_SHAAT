@@ -79,7 +79,9 @@ test('status API lists the sources', async () => {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
     const body = await (await fetch(`http://127.0.0.1:${server.address().port}/api/status`)).json();
-    assert.deepEqual(body.sources.map((s) => [s.id, s.configured]), [['noon', true], ['haraj', true], ['ebay', false], ['google', false]]);
+    assert.deepEqual(body.sources.map((s) => [s.id, s.configured]), [
+      ['noon', true], ['haraj', true], ['amazon', false], ['aliexpress', false], ['ebay', false], ['google', false],
+    ]);
     assert.deepEqual(body.sources.find((s) => s.id === 'haraj').countries, ['SA']);
   } finally {
     await new Promise((resolve) => server.close(resolve));

@@ -3,6 +3,8 @@
 import { demoResult } from '../public/lib/demo.js';
 import { createHarajProvider } from '../public/lib/haraj.js';
 import { searchSources } from '../public/lib/sources.js';
+import { createAliExpressProvider } from './providers/aliexpress.js';
+import { createAmazonProvider } from './providers/amazon.js';
 import { createEbayProvider } from './providers/ebay.js';
 import { createGoogleShoppingProvider } from './providers/google-shopping.js';
 import { createNoonProvider } from './providers/noon.js';
@@ -13,7 +15,14 @@ const CACHE_LIMIT = 200;
 export function createSearcher({
   env = process.env,
   fetch = globalThis.fetch,
-  providers = [createNoonProvider(), createHarajProvider(), createEbayProvider(), createGoogleShoppingProvider()],
+  providers = [
+    createNoonProvider(),
+    createHarajProvider(),
+    createAmazonProvider(),
+    createAliExpressProvider(),
+    createEbayProvider(),
+    createGoogleShoppingProvider(),
+  ],
   now = Date.now,
 } = {}) {
   const cache = new Map();

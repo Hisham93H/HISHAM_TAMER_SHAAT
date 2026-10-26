@@ -229,8 +229,8 @@ function renderNotices() {
     notes.push(h('p', { class: 'notice is-warning' }, h('strong', null, 'Sample data. '), why, ...liveLink()));
   } else if (result && !state.backend && !state.loading && result.country === 'SA') {
     notes.push(h('p', { class: 'notice' },
-      h('strong', null, 'noon isn’t included here. '),
-      'noon blocks searches from other websites, so it only works when Hisham’s Tool runs as a server on a computer in Saudi Arabia.'));
+      h('strong', null, 'Only Haraj is searched here. '),
+      'Amazon and AliExpress need the Hisham’s Tool server with API keys, and noon only works when the server runs on a computer in Saudi Arabia.'));
   }
   if (!state.loading && !state.example) {
     for (const source of result?.sources ?? []) {

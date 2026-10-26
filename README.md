@@ -22,8 +22,9 @@ everything by what you actually pay.
 - **Honest about unknowns**: offers that don't list shipping are marked and ranked after
   the ones whose total is known.
 - **Arabic and English** searches both work; Arabic titles display right to left.
+- **Amazon and AliExpress** in every country, including amazon.sa (API keys needed).
 - **Other countries**: US, Canada, UK, Australia, Germany, France, Italy and Spain through
-  eBay and Google Shopping (API keys needed).
+  Amazon, AliExpress, eBay and Google Shopping (API keys needed).
 - **No dependencies**: plain Node.js and browser JavaScript. Nothing to install.
 
 ## Price sources
@@ -32,6 +33,8 @@ everything by what you actually pay.
 | --- | --- | --- | --- | --- |
 | **noon** | Saudi Arabia | New items from noon.com (Saudi store) | Not in search results: shown as unknown, check noon's checkout | None |
 | **Haraj** | Saudi Arabia | Classifieds on haraj.com.sa, mostly used items | Free pickup in your city; other cities: arrange with the seller | None |
+| **Amazon** (via [SerpAPI](https://serpapi.com/amazon-search-api)) | All (amazon.sa, amazon.com, amazon.co.uk, …) | Amazon search results in your country's Amazon store | Read from the delivery text ("FREE delivery …") | SerpAPI key |
+| **AliExpress** ([Affiliate API](https://openservice.aliexpress.com)) | All | Items that ship to your country (Saudi prices converted from USD at 3.75) | Not returned by the API: shown as unknown | AliExpress app key and secret |
 | [eBay Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html) | US, CA, UK, AU, DE, FR, IT, ES | Fixed-price eBay listings that ship to you | Exact cost to your postal code | Free developer account |
 | [Google Shopping via SerpAPI](https://serpapi.com/google-shopping-api) | All | Many stores (Amazon, Walmart, Best Buy, and local Saudi stores that list on Google) | Read from the listing's delivery text | Free tier: 100 searches/month |
 
@@ -68,9 +71,19 @@ npm start              # http://localhost:3000
 
 ### Getting keys (optional)
 
-**Google Shopping (SerpAPI)**: adds more stores in every country, including Saudi Arabia.
-1. Sign up at [serpapi.com](https://serpapi.com/).
+**SerpAPI** (turns on **Amazon** and **Google Shopping**)
+1. Sign up at [serpapi.com](https://serpapi.com/). The free plan has 100 searches a month;
+   each Hisham's Tool search uses 2 (one for Amazon, one for Google Shopping). To save
+   searches, turn one off with `DISABLE_SOURCES=google`.
 2. Copy your key from [Manage API Key](https://serpapi.com/manage-api-key) into `SERPAPI_KEY`.
+
+**AliExpress**
+1. Join the AliExpress affiliate program at [portals.aliexpress.com](https://portals.aliexpress.com/).
+2. At [openservice.aliexpress.com](https://openservice.aliexpress.com), register as a
+   developer and create an app for the **Affiliates API**. AliExpress reviews new apps,
+   which usually takes 1 to 2 business days.
+3. Put the App Key in `ALIEXPRESS_APP_KEY` and the App Secret in `ALIEXPRESS_APP_SECRET`.
+   Optionally put your affiliate tracking ID in `ALIEXPRESS_TRACKING_ID`.
 
 **eBay** (not available in Saudi Arabia)
 1. Sign up at [developer.ebay.com](https://developer.ebay.com/) and open
@@ -93,15 +106,28 @@ Turn it on once:
 3. Open **Actions → Website → Run workflow** (or push any change).
 
 On GitHub Pages the site has no server. It searches **Haraj live, straight from your
-browser** (Haraj allows this). noon, eBay and Google Shopping need the server, so they aren't
-searched there, and countries other than Saudi Arabia show sample data.
+browser** (Haraj allows this). Amazon, AliExpress, noon, eBay and Google Shopping need the
+server, so they aren't searched there, and countries other than Saudi Arabia show sample data.
 
-## Hosting the full server
+## Full website with Amazon and AliExpress (Vercel)
 
-For noon, eBay or Google Shopping, run the Node server. Any host that runs Node works
-(Render, Railway, Fly.io, a VPS): use `npm start` as the start command and set any keys as
-environment variables. The server listens on `PORT` (default 3000). noon usually blocks cloud
-hosts (see above), so for noon results run it on your own computer in Saudi Arabia.
+Amazon, AliExpress, eBay and Google Shopping need a server to keep your API keys secret.
+[Vercel](https://vercel.com) runs it for free, using the `api/` folder and `vercel.json`:
+
+1. Sign in at [vercel.com/new](https://vercel.com/new) with your GitHub account.
+2. Import the **HISHAM_TAMER_SHAAT** repository. Leave the build settings as they are.
+3. Open **Environment Variables** and add your keys (`SERPAPI_KEY`, `ALIEXPRESS_APP_KEY`,
+   `ALIEXPRESS_APP_SECRET`, and optionally `ALIEXPRESS_TRACKING_ID`).
+4. Click **Deploy**. Your site gets an address like `hisham-tamer-shaat.vercel.app`, and every
+   push updates it.
+
+Haraj works there too. noon is turned off on Vercel, because noon blocks Vercel's servers.
+
+## Hosting the server elsewhere
+
+Any host that runs Node also works (Render, Railway, Fly.io, a VPS): use `npm start` as the
+start command and set any keys as environment variables. The server listens on `PORT`
+(default 3000). For noon results, run it on your own computer in Saudi Arabia.
 
 ## How the ranking works
 
@@ -172,7 +198,8 @@ Sales tax and import duties are not added (noon's Saudi prices already include V
 server.js                 Starts the server and loads .env
 src/app.js                HTTP server: API routes and static files
 src/search.js             Searches all sources, merges, ranks and caches
-src/providers/            Server-only price sources (noon, eBay, Google Shopping)
+src/providers/            Server-only price sources (noon, Amazon, AliExpress, eBay, Google Shopping)
+api/                      Vercel functions for /api/search and /api/status (see vercel.json)
 public/index.html         The website
 public/app.js             Browser code: search, filters, rendering
 public/styles.css         Styles (light and dark themes)

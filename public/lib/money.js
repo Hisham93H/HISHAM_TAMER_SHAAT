@@ -3,7 +3,7 @@
 const CURRENCY_MARK = '(?:US\\$|CA\\$|C\\$|AU\\$|A\\$|\\$|£|€|﷼|ر\\.?\\s?س|USD|CAD|AUD|GBP|EUR|SAR)';
 const AMOUNT = '(\\d[\\d.,]*\\d|\\d)';
 const MARKED_AMOUNT = new RegExp(`${CURRENCY_MARK}\\s?${AMOUNT}|${AMOUNT}\\s?${CURRENCY_MARK}`, 'i');
-const FREE = /\bfree\b|kostenlos|gratuit|gratis/;
+const FREE = /\bfree\b|kostenlos|gratuit|gratis|مجان/;
 const FREE_RETURNS = /free\s+(?:\d+[- ]day\s+)?returns?/g;
 
 export function round2(n) {

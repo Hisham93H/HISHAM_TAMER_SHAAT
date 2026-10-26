@@ -97,7 +97,8 @@ async function serveStatic(pathname, res) {
   }
 }
 
-export function createApp(options = {}) {
+/** A (req, res) request handler: used by the Node server below and by the Vercel functions in api/. */
+export function createHandler(options = {}) {
   const searcher = options.searcher ?? createSearcher(options);
 
   async function handle(req, res) {
@@ -116,11 +117,13 @@ export function createApp(options = {}) {
     return serveStatic(url.pathname, res);
   }
 
-  return http.createServer((req, res) => {
-    handle(req, res).catch((err) => {
-      console.error(err);
-      if (res.headersSent) res.end();
-      else sendJson(res, 500, { error: 'Something went wrong on the server. Try again.' });
-    });
+  return (req, res) => handle(req, res).catch((err) => {
+    console.error(err);
+    if (res.headersSent) res.end();
+    else sendJson(res, 500, { error: 'Something went wrong on the server. Try again.' });
   });
+}
+
+export function createApp(options = {}) {
+  return http.createServer(createHandler(options));
 }
