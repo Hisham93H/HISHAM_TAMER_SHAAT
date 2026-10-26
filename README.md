@@ -72,9 +72,11 @@ npm start              # http://localhost:3000
 ### Getting keys (optional)
 
 **SerpAPI** (turns on **Amazon** and **Google Shopping**)
-1. Sign up at [serpapi.com](https://serpapi.com/). The free plan has 100 searches a month;
-   each Hisham's Tool search uses 2 (one for Amazon, one for Google Shopping). To save
-   searches, turn one off with `DISABLE_SOURCES=google`.
+1. Sign up at [serpapi.com](https://serpapi.com/). The free plan has 250 searches a month;
+   each Hisham's Tool search uses 2 (one for Amazon, one for Google Shopping), and repeat
+   searches within 5 minutes are free. To save searches, turn one off with
+   `DISABLE_SOURCES=google`. In Saudi Arabia, Google Shopping is also how noon's prices
+   come in (noon.com is one of the stores it lists).
 2. Copy your key from [Manage API Key](https://serpapi.com/manage-api-key) into `SERPAPI_KEY`.
 
 **AliExpress**

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterOffers, rankOffers, sortOffers, summarize } from '../public/lib/deals.js';
+import { filterOffers, matchesQuery, rankOffers, sortOffers, summarize } from '../public/lib/deals.js';
 import { demoOffers, demoResult } from '../public/lib/demo.js';
 
 const offer = (fields) => ({ title: 'Widget', seller: 'Shop', source: 'test', condition: 'new', ...fields });
@@ -72,16 +72,33 @@ test('the smart filter hides accessories, parts and outliers but keeps real matc
   assert.deepEqual(kept, ['a', 'b', 'c']);
   // Arabic accessory words count too.
   const arabic = rankOffers([
-    ...offers.filter((o) => ['a', 'b', 'c'].includes(o.id)),
-    offer({ id: 'cover', title: 'كفر ايفون 15 برو', price: 120, shipping: 0 }),
-    offer({ id: 'phone', title: 'ايفون 15 برو مستعمل', price: 120, shipping: 0 }),
+    offer({ id: 'p1', title: 'ايفون 15 برو 256', price: 3000, shipping: 0 }),
+    offer({ id: 'p2', title: 'أيفون 15 برو ماكس', price: 3200, shipping: 0 }),
+    offer({ id: 'p3', title: 'iPhone 15 Pro', price: 2900, shipping: 0 }),
+    offer({ id: 'cover', title: 'كفر ايفون 15 برو', price: 1200, shipping: 0 }),
+    offer({ id: 'used', title: 'ايفون 15 برو مستعمل', price: 1200, shipping: 0 }),
   ]);
   const arabicIds = filterOffers(arabic, {}, 'ايفون 15 برو').map((o) => o.id);
   assert.ok(!arabicIds.includes('cover'));
-  assert.ok(arabicIds.includes('phone'));
+  assert.ok(arabicIds.includes('used'));
   // When the query asks for the accessory, it isn't hidden.
   const caseSearch = filterOffers(offers, {}, 'sony wh-1000xm5 case').map((o) => o.id);
   assert.ok(caseSearch.includes('d'));
+});
+
+test('matchesQuery keeps the searched product and drops other ones', () => {
+  assert.ok(matchesQuery('Apple AirPods Pro 3 Wireless Earbuds', 'airpods pro'));
+  assert.ok(matchesQuery('Apple Air Pods Pro', 'airpods pro'));
+  assert.ok(!matchesQuery('Redmi Buds 5 Pro Bluetooth Earbuds', 'airpods pro'));
+  assert.ok(!matchesQuery('AirPods 4 Wireless Earbuds', 'airpods pro'));
+  assert.ok(matchesQuery('iPhone 15 Pro Max 256 GB', 'iphone 15 pro max 256gb'));
+  assert.ok(!matchesQuery('iPhone 14 Pro', 'iphone 15 pro'));
+  // Arabic spelling variants match each other.
+  assert.ok(matchesQuery('أيفون 15 برو', 'ايفون 15 برو'));
+  // Words in a script the title doesn't use are skipped: the number still has to match.
+  assert.ok(matchesQuery('سماعات أيربودز برو 3', 'airpods pro'));
+  assert.ok(matchesQuery('Apple iPhone 15 Pro', 'ايفون 15'));
+  assert.ok(!matchesQuery('Samsung Galaxy S24', 'ايفون 15'));
 });
 
 test('summarize finds the best deal and how much the lowest sticker price really costs', () => {

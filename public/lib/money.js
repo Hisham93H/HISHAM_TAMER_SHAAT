@@ -5,6 +5,8 @@ const AMOUNT = '(\\d[\\d.,]*\\d|\\d)';
 const MARKED_AMOUNT = new RegExp(`${CURRENCY_MARK}\\s?${AMOUNT}|${AMOUNT}\\s?${CURRENCY_MARK}`, 'i');
 const FREE = /\bfree\b|kostenlos|gratuit|gratis|مجان/;
 const FREE_RETURNS = /free\s+(?:\d+[- ]day\s+)?returns?/g;
+// Free only for some buyers ("FREE delivery … on your first order", "… for Prime members").
+const FREE_FOR_SOME = /first order|prime members|with prime|أول طلب/;
 
 export function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
@@ -51,6 +53,7 @@ export function parseShipping(value, itemPrice = null) {
   if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : null;
   const text = String(value).toLowerCase().replace(FREE_RETURNS, '');
   if (FREE.test(text)) {
+    if (FREE_FOR_SOME.test(text)) return null;
     // An amount next to "free" is a minimum order, not a fee.
     const minimum = markedAmount(text);
     if (minimum == null) return 0;

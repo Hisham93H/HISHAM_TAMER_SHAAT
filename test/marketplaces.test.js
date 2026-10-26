@@ -40,6 +40,22 @@ test('Arabic "free delivery" counts as free shipping', () => {
   assert.equal(parseShipping('توصيل مجاني السبت، 1 نوفمبر'), 0);
 });
 
+test('free delivery for only some buyers is not counted as free', () => {
+  assert.equal(parseShipping('FREE delivery Tomorrow, 27 Oct on your first order', 999), null);
+  assert.equal(parseShipping('FREE delivery for Prime members', 999), null);
+});
+
+test('Amazon provider skips out-of-stock items', async () => {
+  const fetch = async () => jsonResponse({
+    organic_results: [
+      { asin: 'A1', title: 'In stock', extracted_price: 100, delivery: ['FREE delivery'] },
+      { asin: 'A2', title: 'Gone', extracted_price: 90, delivery: ['FREE delivery', 'Temporarily out of stock.'] },
+    ],
+  });
+  const offers = await createAmazonProvider().search({ q: 'x', country: 'SA' }, { env: { SERPAPI_KEY: 'k' }, fetch });
+  assert.deepEqual(offers.map((o) => o.id), ['amazon:A1']);
+});
+
 test('Amazon provider searches the local Amazon store in English', async () => {
   let url;
   const fetch = async (u) => {

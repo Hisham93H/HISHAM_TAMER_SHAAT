@@ -57,6 +57,41 @@ function hasAccessoryTerm(title, query) {
   return ACCESSORY_TERMS.some((term) => term.test(title) && !term.test(query));
 }
 
+const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'of', 'an', 'new', 'من', 'في']);
+const LATIN = /[a-z]/;
+const ARABIC = /[؀-ۿ]/;
+
+// Lowercase, one spelling per Arabic letter (أ/ا, ة/ه, ى/ي), no vowel marks.
+function normalizeText(text) {
+  return String(text).toLowerCase()
+    .replace(/[ً-ٟـ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي');
+}
+
+function queryWords(query) {
+  return [...new Set(normalizeText(query).split(/[^\p{L}\p{N}]+/u))]
+    .filter((word) => (word.length > 1 || /\d/.test(word)) && !STOP_WORDS.has(word));
+}
+
+/**
+ * Whether a title is about the searched product: it must contain the search words
+ * (one may be missing from searches of four words or more). Words are compared
+ * without spaces, so "airpods" matches "Air Pods" and "256gb" matches "256 GB".
+ * A word in a script the title doesn't use (an English search, an Arabic title) is
+ * skipped, since it can't be compared.
+ */
+export function matchesQuery(title, query) {
+  const words = queryWords(query);
+  const normalized = normalizeText(title);
+  const compact = normalized.replace(/[^\p{L}\p{N}]+/gu, '');
+  const comparable = words.filter((word) =>
+    !(LATIN.test(word) && !LATIN.test(normalized)) && !(ARABIC.test(word) && !ARABIC.test(normalized)));
+  const missing = comparable.filter((word) => !compact.includes(word)).length;
+  return missing <= (words.length >= 4 ? 1 : 0);
+}
+
 /**
  * Listings that are probably not the product being searched for: items sold for parts,
  * prices far below the typical price, and cheap accessories the query didn't ask for.
@@ -77,8 +112,9 @@ export function filterOffers(offers, filters = {}, query = '') {
     smart = true,
     sources = null,
   } = filters;
-  const typicalPrice = offers.length >= 4 ? median(offers.map((o) => o.price)) : null;
-  return offers.filter((o) =>
+  const candidates = smart ? offers.filter((o) => matchesQuery(o.title, query)) : offers;
+  const typicalPrice = candidates.length >= 4 ? median(candidates.map((o) => o.price)) : null;
+  return candidates.filter((o) =>
     (condition === 'any' || o.condition === condition)
     && (!freeShippingOnly || o.shipping === 0)
     && (includeUnknownShipping || o.shipping != null)

@@ -19,6 +19,11 @@ const DOMAINS = {
 };
 // amazon.sa answers in Arabic unless asked for English.
 const LANGUAGES = { SA: 'en_AE' };
+const UNAVAILABLE = /out of stock|currently unavailable|غير متوفر/i;
+
+function isAvailable(item) {
+  return ![].concat(item.delivery ?? []).some((text) => UNAVAILABLE.test(text));
+}
 
 export function normalizeAmazonItem(item, currency) {
   const price = item.extracted_price ?? parseMoney(item.price);
@@ -69,7 +74,7 @@ export function createAmazonProvider() {
       }
       if (!res.ok) throw new Error(`Amazon search failed (HTTP ${res.status}).`);
       const { currency } = COUNTRIES[country];
-      return (data.organic_results ?? []).map((item) => normalizeAmazonItem(item, currency));
+      return (data.organic_results ?? []).filter(isAvailable).map((item) => normalizeAmazonItem(item, currency));
     },
   };
 }
