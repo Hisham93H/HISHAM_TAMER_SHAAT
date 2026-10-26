@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHarajProvider, harajCondition, normalizeHarajPost } from '../src/providers/haraj.js';
+import { createHarajProvider, harajCondition, normalizeHarajPost } from '../public/lib/haraj.js';
 import { createNoonProvider, normalizeNoonHit } from '../src/providers/noon.js';
 import { createSearcher } from '../src/search.js';
 import { findCity } from '../public/lib/places.js';
@@ -84,6 +84,8 @@ test('Haraj provider searches, drops sold posts, and ranking skips unpriced ones
 test('Haraj provider reports GraphQL errors', async () => {
   const fetch = async () => jsonResponse({ errors: [{ message: 'Query too complex' }] });
   await assert.rejects(createHarajProvider().search({ q: 'x', country: 'SA' }, { fetch }), /Query too complex/);
+  const offline = async () => { throw new TypeError('Failed to fetch'); };
+  await assert.rejects(createHarajProvider().search({ q: 'x', country: 'SA' }, { fetch: offline }), /Couldn’t reach Haraj/);
 });
 
 test('normalizeNoonHit builds the Saudi product link and uses the sale price', () => {

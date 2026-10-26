@@ -82,14 +82,26 @@ npm start              # http://localhost:3000
 Restart the server after changing `.env`. The badge in the top-right corner of the page
 shows which sources are live for the selected country.
 
-## Deploy
+## Live website (GitHub Pages)
 
-Any host that runs Node works (Render, Railway, Fly.io, a VPS). Use `npm start` as the start
-command and set any keys as environment variables. The server listens on `PORT` (default
-3000). Remember that noon usually blocks cloud hosts (see above).
+The workflow in `.github/workflows/pages.yml` runs the tests on every push and publishes the
+site from the default branch to **https://hisham93h.github.io/HISHAM_TAMER_SHAAT/**.
 
-The `public/` folder also works on its own on any static host (such as GitHub Pages). Without
-the server it shows sample data only.
+Turn it on once:
+1. In the repository, open **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Open **Actions → Website → Run workflow** (or push any change).
+
+On GitHub Pages the site has no server. It searches **Haraj live, straight from your
+browser** (Haraj allows this). noon, eBay and Google Shopping need the server, so they aren't
+searched there, and countries other than Saudi Arabia show sample data.
+
+## Hosting the full server
+
+For noon, eBay or Google Shopping, run the Node server. Any host that runs Node works
+(Render, Railway, Fly.io, a VPS): use `npm start` as the start command and set any keys as
+environment variables. The server listens on `PORT` (default 3000). noon usually blocks cloud
+hosts (see above), so for noon results run it on your own computer in Saudi Arabia.
 
 ## How the ranking works
 
@@ -160,7 +172,7 @@ Sales tax and import duties are not added (noon's Saudi prices already include V
 server.js                 Starts the server and loads .env
 src/app.js                HTTP server: API routes and static files
 src/search.js             Searches all sources, merges, ranks and caches
-src/providers/            One file per price source (noon, Haraj, eBay, Google Shopping)
+src/providers/            Server-only price sources (noon, eBay, Google Shopping)
 public/index.html         The website
 public/app.js             Browser code: search, filters, rendering
 public/styles.css         Styles (light and dark themes)
@@ -168,13 +180,17 @@ public/lib/               Shared by the server and the browser:
   places.js                 countries and Saudi cities
   money.js                  price and shipping-text parsing
   deals.js                  totals, ranking, filters, best-deal summary
+  sources.js                searches several sources and merges the results
+  haraj.js                  Haraj search (runs on the server or in the browser)
   demo.js                   sample offers for countries without a live source
 test/                     node:test suites
+.github/workflows/        Tests every push; publishes public/ to GitHub Pages
 ```
 
 ### Adding a source
 
-Create a file in `src/providers/` that exports an object with `id`, `name`, `countries`
+Create a file in `src/providers/` (or `public/lib/` if the site can call the source straight
+from the browser) that exports an object with `id`, `name`, `countries`
 (country codes it covers), `isConfigured(env)` and
 `async search({ q, zip, city, country }, { env, fetch })`, returning offers in the shape shown
 above (without `total`; it is calculated for you). Then add it to the `providers` list in

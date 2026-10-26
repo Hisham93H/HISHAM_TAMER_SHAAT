@@ -1,8 +1,16 @@
 import { CITIES, COUNTRIES, DEFAULT_COUNTRY, describeLocation, findCity } from './lib/places.js';
 import { filterOffers, sortOffers, summarize } from './lib/deals.js';
 import { demoResult } from './lib/demo.js';
+import { createHarajProvider } from './lib/haraj.js';
+import { searchSources } from './lib/sources.js';
 
 const EXAMPLE_QUERY = 'wireless earbuds';
+// Sources the browser can search by itself when the site runs without its server
+// (e.g. on GitHub Pages). Haraj allows this; noon and the keyed APIs don't.
+const BROWSER_SOURCES = { SA: [createHarajProvider()] };
+// Set on copies of the page that can't search live (the claude.ai preview), to point
+// visitors to the live site.
+const LIVE_URL = document.querySelector('meta[name="hishams-tool:live-url"]')?.content;
 const DEFAULT_FILTERS = {
   sort: 'total',
   condition: 'any',
@@ -133,7 +141,18 @@ function shipTo() {
 function liveSourceNames(country) {
   return state.backend
     ? state.backend.sources.filter((s) => s.configured && s.countries.includes(country)).map((s) => s.name)
-    : [];
+    : (BROWSER_SOURCES[country] ?? []).map((p) => p.name);
+}
+
+// Without a server: search what the browser can reach, and fall back to sample data
+// (keeping the failure notices) when none of it answers.
+async function browserSearch({ q, zip = '', city = '', country }) {
+  const providers = BROWSER_SOURCES[country];
+  if (!providers) return demoResult(q, country, zip, city);
+  const result = await searchSources(providers, { q, zip, city, country }, { fetch: (...args) => fetch(...args) });
+  if (result.sources.some((s) => s.ok)) return result;
+  const demo = demoResult(q, country, zip, city);
+  return { ...demo, sources: [...result.sources, ...demo.sources] };
 }
 
 async function search() {
@@ -156,7 +175,7 @@ async function search() {
   render();
   try {
     await backendReady;
-    const result = state.backend ? await fetchResult(params) : demoResult(q, country, zip, city);
+    const result = state.backend ? await fetchResult(params) : await browserSearch(params);
     if (id !== state.requestId) return;
     state.result = result;
     state.hiddenSources.clear();
@@ -184,19 +203,34 @@ function renderMode() {
   render();
 }
 
+function liveLink() {
+  const url = LIVE_URL && safeUrl(LIVE_URL, ['https:']);
+  return url ? [' ', h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, 'Open the live version'), '.'] : [];
+}
+
 function renderNotices() {
   const notes = [];
   const result = state.result;
+  const countryName = COUNTRIES[result?.country]?.name ?? result?.country;
   if (state.example) {
     notes.push(h('p', { class: 'notice' },
       h('strong', null, 'Example search. '),
-      `These results for “${EXAMPLE_QUERY}” are sample offers from fictional stores. Search for any product above.`));
+      `These results for “${EXAMPLE_QUERY}” are sample offers from fictional stores. Search for any product above.`,
+      ...liveLink()));
   } else if (result?.demo && !state.loading) {
-    notes.push(h('p', { class: 'notice is-warning' },
-      h('strong', null, 'Demo mode. '),
-      state.backend
-        ? `No live price source covers ${COUNTRIES[result.country]?.name ?? result.country} on this server yet, so these offers come from fictional stores. Add eBay or SerpAPI keys to the .env file to compare live prices.`
-        : 'These offers come from fictional stores so you can try the tool. Run the Hisham’s Tool server to compare live prices from noon, Haraj and other stores.'));
+    let why;
+    if (state.backend) {
+      why = `No live price source covers ${countryName} on this server yet, so these offers come from fictional stores. Add eBay or SerpAPI keys to the .env file to compare live prices.`;
+    } else if (BROWSER_SOURCES[result.country]) {
+      why = 'Live search didn’t answer, so these are sample offers from fictional stores.';
+    } else {
+      why = `Live prices for ${countryName} need the Hisham’s Tool server with eBay or Google Shopping keys, so these offers come from fictional stores.`;
+    }
+    notes.push(h('p', { class: 'notice is-warning' }, h('strong', null, 'Sample data. '), why, ...liveLink()));
+  } else if (result && !state.backend && !state.loading && result.country === 'SA') {
+    notes.push(h('p', { class: 'notice' },
+      h('strong', null, 'noon isn’t included here. '),
+      'noon blocks searches from other websites, so it only works when Hisham’s Tool runs as a server on a computer in Saudi Arabia.'));
   }
   if (!state.loading && !state.example) {
     for (const source of result?.sources ?? []) {

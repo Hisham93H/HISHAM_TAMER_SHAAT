@@ -3,8 +3,9 @@
 // shipping fee: a listing in the buyer's own city counts as free local pickup, and
 // one in another city has unknown shipping. Listings without a price are skipped
 // later by the ranking, because their sellers expect offers instead.
-// Uses the public GraphQL endpoint that the haraj.com.sa website itself calls.
-import { findCity } from '../../public/lib/places.js';
+// Uses the public GraphQL endpoint that the haraj.com.sa website itself calls. Haraj
+// allows requests from any website, so this runs on the server and in the browser.
+import { findCity } from './places.js';
 
 const ENDPOINT = 'https://graphql.haraj.com.sa/?queryName=Search&lang=ar';
 const TIMEOUT_MS = 10_000;
@@ -59,17 +60,17 @@ export function createHarajProvider() {
     isConfigured: () => true,
 
     async search({ q, city }, { fetch }) {
-      const res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/json',
-          origin: 'https://haraj.com.sa',
-          referer: 'https://haraj.com.sa/',
-        },
-        body: JSON.stringify({ query: SEARCH_QUERY, variables: { search: q, page: 1, limit: 60 } }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+      let res;
+      try {
+        res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ query: SEARCH_QUERY, variables: { search: q, page: 1, limit: 60 } }),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+      } catch {
+        throw new Error('Couldn’t reach Haraj. Check your internet connection and try again.');
+      }
       if (!res.ok) throw new Error(`Haraj search failed (HTTP ${res.status}).`);
       const body = await res.json();
       const items = body.data?.search?.items;
