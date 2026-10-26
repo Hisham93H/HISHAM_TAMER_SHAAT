@@ -1,0 +1,16 @@
+{
+  "name": "hishams-tool",
+  "version": "1.0.0",
+  "description": "Hisham's Tool: find the cheapest deal on any product, with shipping included.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "license": "MIT"
+}
